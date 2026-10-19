@@ -78,11 +78,11 @@
 <main>
   <section class="card" id="addCard">
     <h2>Add a document</h2>
-    <p class="mut">Paste raw text (or drop / pick a file) for any of: iCrew <b>time card</b>, <b>PAS</b> (CSV export), iCrew <b>pay statement</b>, <b>pay stub</b>, or iCrew <b>rotation</b> display. Type is auto-detected. Load as many periods as you like — reconciliation deepens with each document type present.</p>
+    <p class="mut">Paste raw text (or drop / pick a file) for any of: iCrew <b>time card</b>, <b>PAS</b> (CSV export), iCrew <b>pay statement</b>, <b>pay stub</b>, or iCrew <b>rotation</b> display. Type is auto-detected. The PAS downloads from DeltaNet as a <b>.zip</b> — drop it in as-is; it is unpacked in this browser and every document inside is auto-detected the same way. Load as many periods as you like — reconciliation deepens with each document type present.</p>
     <textarea id="pasteBox" placeholder="Paste document text here…"></textarea>
     <div class="row" style="margin-top:10px">
       <button id="addBtn" type="button">Add document</button>
-      <input type="file" id="fileInput" multiple accept=".txt,.csv,.text">
+      <input type="file" id="fileInput" multiple accept=".txt,.csv,.text,.zip">
     </div>
     <div class="drop" id="dropZone">…or drop files anywhere on this card</div>
     <p class="mut" id="addMsg" role="status"></p>
