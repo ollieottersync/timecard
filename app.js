@@ -950,12 +950,63 @@ const PayAudit = (() => {
     return { rows: rows, totals: totals, quarters: quarters };
   }
 
+  /* ---------------- ZIP extraction (DeltaNet downloads arrive as .zip) ----------------
+   * Minimal read-only ZIP reader: central-directory based; supports stored
+   * (method 0) and deflated (method 8) entries. Decompression uses the
+   * platform DecompressionStream, so archives are unpacked locally and
+   * never leave the device. Returns [{ name, text }] for every file entry. */
+  async function unzipTextFiles(buf) {
+    const bytes = buf instanceof Uint8Array ? buf : new Uint8Array(buf);
+    const dv = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+    const u16 = (o) => dv.getUint16(o, true);
+    const u32 = (o) => dv.getUint32(o, true);
+    // locate the End Of Central Directory record (scan back over its comment)
+    let eocd = -1;
+    const floor = Math.max(0, bytes.length - 22 - 65536);
+    for (let i = bytes.length - 22; i >= floor; i--) {
+      if (u32(i) === 0x06054b50) { eocd = i; break; }
+    }
+    if (eocd < 0) throw new Error('Not a ZIP file (no end-of-directory record found).');
+    const count = u16(eocd + 10);
+    let off = u32(eocd + 16);
+    const decoder = new TextDecoder('utf-8');
+    const out = [];
+    for (let n = 0; n < count; n++) {
+      if (off + 46 > bytes.length || u32(off) !== 0x02014b50) break;
+      const flags = u16(off + 8);
+      const method = u16(off + 10);
+      const compSize = u32(off + 20);
+      const nameLen = u16(off + 28), extraLen = u16(off + 30), commentLen = u16(off + 32);
+      const localOff = u32(off + 42);
+      const name = decoder.decode(bytes.subarray(off + 46, off + 46 + nameLen));
+      off += 46 + nameLen + extraLen + commentLen;
+      if (name.endsWith('/') || name.startsWith('__MACOSX/')) continue;
+      if (flags & 0x1) throw new Error('"' + name + '" is encrypted — unzip the archive first, then load the files inside.');
+      const dataStart = localOff + 30 + u16(localOff + 26) + u16(localOff + 28);
+      const comp = bytes.subarray(dataStart, dataStart + compSize);
+      let raw;
+      if (method === 0) {
+        raw = comp;
+      } else if (method === 8) {
+        if (typeof DecompressionStream === 'undefined') {
+          throw new Error('This browser cannot unpack ZIP files — unzip the archive first, then load the files inside.');
+        }
+        const stream = new Blob([comp]).stream().pipeThrough(new DecompressionStream('deflate-raw'));
+        raw = new Uint8Array(await new Response(stream).arrayBuffer());
+      } else {
+        throw new Error('"' + name + '" uses an unsupported ZIP compression (method ' + method + ').');
+      }
+      out.push({ name: name.split('/').pop(), text: decoder.decode(raw) });
+    }
+    return out;
+  }
+
   return {
     hmToMin, minToHM, dotToMin, moneyToNum, fmtMoney, round2,
     parseCSV, detectType, parseTimecard, summarizeCard, parseStatement,
     parsePAS, parseStub, parseRotation, splitRotation,
     buildContext, reconcile, historyTotals, advanceEstimate, baseRateFor,
-    bidMonthLabel, iso
+    bidMonthLabel, iso, unzipTextFiles
   };
 })();
 
@@ -1174,7 +1225,25 @@ if (typeof document !== 'undefined') {
   // wire up inputs
   $('addBtn').addEventListener('click', () => { $('addMsg').textContent = addText($('pasteBox').value, 'Pasted document'); $('pasteBox').value = ''; });
   $('clearBtn').addEventListener('click', () => { docs = []; save(); render(); $('addMsg').textContent = 'All documents removed.'; });
-  const readFile = (f) => f.text().then(t => addText(t, f.name));
+  const readFile = async (f) => {
+    const buf = await f.arrayBuffer();
+    const head = new Uint8Array(buf.slice(0, 2));
+    const isZip = /\.zip$/i.test(f.name) || (head[0] === 0x50 && head[1] === 0x4b); // 'PK' signature
+    if (!isZip) return addText(new TextDecoder().decode(buf), f.name);
+    let entries;
+    try { entries = await PayAudit.unzipTextFiles(buf); }
+    catch (e) { return 'Could not open ' + f.name + ': ' + e.message; }
+    const usable = entries.filter(en => /\.(csv|txt|text)$/i.test(en.name) || !/\./.test(en.name));
+    if (!usable.length) return 'No text documents found inside ' + f.name + '.';
+    let added = 0, failed = 0;
+    for (const en of usable) {
+      const before = docs.length;
+      addText(en.text, en.name);
+      if (docs.length > before) added++; else failed++;
+    }
+    return 'Opened ' + f.name + ': added ' + added + ' document' + (added === 1 ? '' : 's') +
+      (failed ? '; ' + failed + ' file' + (failed === 1 ? '' : 's') + ' not recognized' : '') + '.';
+  };
   $('fileInput').addEventListener('change', (e) => {
     const files = Array.from(e.target.files || []);
     files.reduce((pr, f) => pr.then(() => readFile(f)), Promise.resolve())
