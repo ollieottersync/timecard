@@ -1261,6 +1261,7 @@ if (typeof document !== 'undefined') {
       $('s' + s + 'Msg').textContent = addText($('s' + s + 'Paste').value, 'Pasted document', s);
       $('s' + s + 'Paste').value = '';
     });
+    if (s === 1) continue; // Step 1 is paste-only: time cards come from iCrew as copied text
     $('s' + s + 'File').addEventListener('change', (e) => {
       const files = Array.from(e.target.files || []);
       files.reduce((pr, f) => pr.then(() => readFile(f)), Promise.resolve())
