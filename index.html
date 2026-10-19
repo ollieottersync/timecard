@@ -84,18 +84,16 @@
   <section class="card">
     <h2>How it works — three steps</h2>
     <p class="mut">Add documents in order. Your <b>time card</b> (Step 1) produces the audit summary on its own. The <b>PAS</b> (Step 2) cross-checks it activity by activity. The <b>pay statement</b> (Step 3, optional) reconciles what the company actually paid. Results appear below automatically as you add documents, and you can load as many bid periods as you like.</p>
-    <p class="mut">Have the <b>DeltaNet ZIP</b>? Drop it on any step — the documents inside sort themselves into the right step automatically.</p>
+    <p class="mut">Have the <b>DeltaNet ZIP</b>? Drop it on Step 2 or Step 3 — the documents inside sort themselves into the right step automatically, time cards included.</p>
   </section>
 
   <section class="card" id="step1">
     <h2><span class="stepno">1</span>Copy and paste your time card</h2>
-    <p class="mut">In iCrew, open your <b>Monthly Time Data</b> display for the bid period. Select all of the text — starting with the <b>MONTHLY TIME DATA</b> header at the top and ending with <b>END OF DISPLAY</b> at the bottom — copy it, and paste it here. (An iCrew rotation display can also go in this box.)</p>
+    <p class="mut">In iCrew, open your <b>Monthly Time Data</b> display for the bid period. Select all of the text — starting with the <b>MONTHLY TIME DATA</b> header at the top and ending with <b>END OF DISPLAY</b> at the bottom — copy it, and paste it here. (An iCrew rotation display can also go in this box.) Paste the actual text, not a screenshot: the audit reads every number exactly, and text copied from iCrew is exact.</p>
     <textarea id="s1Paste" placeholder="Paste your time card here — it starts with MONTHLY TIME DATA and ends with END OF DISPLAY…"></textarea>
     <div class="row" style="margin-top:10px">
       <button id="s1Add" type="button">Add time card</button>
-      <input type="file" id="s1File" multiple accept=".txt,.csv,.text,.zip">
     </div>
-    <div class="drop" id="s1Drop">…or drop the file anywhere on this card</div>
     <p class="mut" id="s1Msg" role="status"></p>
     <ul class="doclist" id="s1Docs"></ul>
   </section>
