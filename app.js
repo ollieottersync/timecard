@@ -1036,17 +1036,24 @@ if (typeof document !== 'undefined') {
     return { type: 'unknown' };
   }
 
-  function addText(text, name) {
+  function stepFor(type) {
+    return { timecard: 1, rotation: 1, pas: 2, statement: 3, stub: 3 }[type] || 0;
+  }
+
+  function addText(text, name, fromStep) {
     text = String(text || '').trim();
     if (!text) return 'Nothing to add — the box was empty.';
     const probe = { text: text };
     const parsed = parseDoc(probe);
     if (parsed.type === 'unknown') {
-      return 'Could not recognize that document. Expected an iCrew time card, a PAS CSV, an iCrew pay statement, a pay stub, or a rotation display.';
+      return 'Could not recognize that document. Step 1 takes an iCrew time card (Monthly Time Data), Step 2 a PAS CSV, Step 3 a pay statement or pay stub.';
     }
     docs.push({ id: Date.now() + '-' + (counter++), name: name || ('Pasted ' + parsed.type), text: text });
     save(); render();
-    return 'Added ' + typeLabel(parsed) + (parsed.bidMonth ? ' for ' + PayAudit.bidMonthLabel(parsed.bidMonth) : '') + '.';
+    const home = stepFor(parsed.type);
+    let msg = 'Added ' + typeLabel(parsed) + (parsed.bidMonth ? ' for ' + PayAudit.bidMonthLabel(parsed.bidMonth) : '') + '.';
+    if (fromStep && home && home !== fromStep) msg += ' That document belongs to Step ' + home + ', so it was filed there.';
+    return msg;
   }
 
   function typeLabel(p) {
@@ -1055,12 +1062,18 @@ if (typeof document !== 'undefined') {
 
   function render() {
     const parsed = docs.map(d => ({ doc: d, parsed: parseDoc(d) }));
-    // document list
-    $('docList').innerHTML = parsed.map(({ doc, parsed: p }) =>
-      '<li><span><span class="tag">' + esc(typeLabel(p)) + '</span>' + esc(doc.name) +
-      (p.bidMonth ? ' <span class="mut">' + esc(PayAudit.bidMonthLabel(p.bidMonth)) + '</span>' : '') +
-      (p.type === 'rotation' && p.rot ? ' <span class="mut">rotation ' + esc(p.rot) + '</span>' : '') +
-      '</span><button class="danger" data-del="' + esc(doc.id) + '" type="button">Remove</button></li>').join('');
+    // per-step document lists
+    for (const s of [1, 2, 3]) {
+      const items = parsed.filter(({ parsed: p }) => stepFor(p.type) === s);
+      $('s' + s + 'Docs').innerHTML = items.length ? items.map(({ doc, parsed: p }) =>
+        '<li><span><span class="tag">' + esc(typeLabel(p)) + '</span>' + esc(doc.name) +
+        (p.bidMonth ? ' <span class="mut">' + esc(PayAudit.bidMonthLabel(p.bidMonth)) + '</span>' : '') +
+        (p.type === 'rotation' && p.rot ? ' <span class="mut">rotation ' + esc(p.rot) + '</span>' : '') +
+        '</span><button class="danger" data-del="' + esc(doc.id) + '" type="button">Remove</button></li>').join('')
+        : '<li class="mut" style="border-top:0">Nothing loaded yet.</li>';
+    }
+    const cnt = $('docCount');
+    if (cnt) cnt.textContent = docs.length ? docs.length + ' document' + (docs.length === 1 ? '' : 's') + ' loaded.' : '';
     document.querySelectorAll('[data-del]').forEach(b => b.addEventListener('click', () => {
       docs = docs.filter(d => d.id !== b.getAttribute('data-del')); save(); render();
     }));
@@ -1155,7 +1168,7 @@ if (typeof document !== 'undefined') {
     if (multi.length || orphanRots) {
       html += '<section class="card"><h2>Cross-period checks</h2>' + multi.map(chkHtml).join('') + orphanRots + '</section>';
     }
-    $('periods').innerHTML = html || '<section class="card"><p class="empty">No documents yet. Add a time card, PAS, pay statement, pay stub, or rotation above to start the audit.</p></section>';
+    $('periods').innerHTML = html || '<section class="card"><p class="empty">Nothing to audit yet — start with Step 1 (your time card) above.</p></section>';
 
     // history
     const hist = PayAudit.historyTotals(ctx);
@@ -1223,8 +1236,7 @@ if (typeof document !== 'undefined') {
   }
 
   // wire up inputs
-  $('addBtn').addEventListener('click', () => { $('addMsg').textContent = addText($('pasteBox').value, 'Pasted document'); $('pasteBox').value = ''; });
-  $('clearBtn').addEventListener('click', () => { docs = []; save(); render(); $('addMsg').textContent = 'All documents removed.'; });
+  $('clearBtn').addEventListener('click', () => { docs = []; save(); render(); $('s1Msg').textContent = 'All documents removed.'; });
   const readFile = async (f) => {
     const buf = await f.arrayBuffer();
     const head = new Uint8Array(buf.slice(0, 2));
@@ -1244,21 +1256,26 @@ if (typeof document !== 'undefined') {
     return 'Opened ' + f.name + ': added ' + added + ' document' + (added === 1 ? '' : 's') +
       (failed ? '; ' + failed + ' file' + (failed === 1 ? '' : 's') + ' not recognized' : '') + '.';
   };
-  $('fileInput').addEventListener('change', (e) => {
-    const files = Array.from(e.target.files || []);
-    files.reduce((pr, f) => pr.then(() => readFile(f)), Promise.resolve())
-      .then(msg => { if (msg) $('addMsg').textContent = msg; });
-    e.target.value = '';
-  });
-  const dz = $('dropZone');
-  const card = $('addCard');
-  card.addEventListener('dragover', (e) => { e.preventDefault(); dz.classList.add('over'); });
-  card.addEventListener('dragleave', () => dz.classList.remove('over'));
-  card.addEventListener('drop', (e) => {
-    e.preventDefault(); dz.classList.remove('over');
-    const files = Array.from((e.dataTransfer && e.dataTransfer.files) || []);
-    files.reduce((pr, f) => pr.then(() => readFile(f)), Promise.resolve())
-      .then(msg => { if (msg) $('addMsg').textContent = msg; });
-  });
+  for (const s of [1, 2, 3]) {
+    $('s' + s + 'Add').addEventListener('click', () => {
+      $('s' + s + 'Msg').textContent = addText($('s' + s + 'Paste').value, 'Pasted document', s);
+      $('s' + s + 'Paste').value = '';
+    });
+    $('s' + s + 'File').addEventListener('change', (e) => {
+      const files = Array.from(e.target.files || []);
+      files.reduce((pr, f) => pr.then(() => readFile(f)), Promise.resolve())
+        .then(msg => { if (msg) $('s' + s + 'Msg').textContent = msg; });
+      e.target.value = '';
+    });
+    const dz = $('s' + s + 'Drop'), card = $('step' + s);
+    card.addEventListener('dragover', (e) => { e.preventDefault(); dz.classList.add('over'); });
+    card.addEventListener('dragleave', () => dz.classList.remove('over'));
+    card.addEventListener('drop', (e) => {
+      e.preventDefault(); dz.classList.remove('over');
+      const files = Array.from((e.dataTransfer && e.dataTransfer.files) || []);
+      files.reduce((pr, f) => pr.then(() => readFile(f)), Promise.resolve())
+        .then(msg => { if (msg) $('s' + s + 'Msg').textContent = msg; });
+    });
+  }
   render();
 }
