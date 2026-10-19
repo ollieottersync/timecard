@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0b3d66">
+<title>Delta Pay Audit — Personal</title>
+<style>
+  :root{
+    --ink:#14202b; --mut:#5b6b7a; --line:#d8e0e8; --bg:#f4f7fa; --card:#fff;
+    --blue:#0b3d66; --blue2:#14649c; --ok:#177245; --okbg:#e6f4ec;
+    --warn:#9a6a00; --warnbg:#fdf3d7; --info:#33566e; --infobg:#e9f1f7;
+    --chip:#eef3f8;
+  }
+  *{box-sizing:border-box}
+  html{-webkit-text-size-adjust:100%}
+  body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+       background:var(--bg);color:var(--ink);font-size:16px;line-height:1.45}
+  header{background:var(--blue);color:#fff;padding:18px 16px 14px}
+  header h1{margin:0;font-size:22px;letter-spacing:.2px}
+  header p{margin:4px 0 0;font-size:13px;opacity:.85}
+  main{max-width:860px;margin:0 auto;padding:14px 12px 48px}
+  section.card{background:var(--card);border:1px solid var(--line);border-radius:12px;
+    padding:14px 14px 16px;margin:0 0 14px;box-shadow:0 1px 2px rgba(20,32,43,.04)}
+  h2{font-size:17px;margin:2px 0 10px}
+  h3{font-size:15px;margin:16px 0 6px}
+  .mut{color:var(--mut);font-size:13px}
+  textarea{width:100%;min-height:110px;border:1px solid var(--line);border-radius:10px;
+    padding:10px;font:13px/1.4 ui-monospace,SFMono-Regular,Menlo,monospace;resize:vertical}
+  .drop{border:1.5px dashed var(--blue2);border-radius:10px;padding:12px;text-align:center;
+    color:var(--blue2);font-size:14px;margin-top:10px;background:#fbfdff}
+  .drop.over{background:#e8f2fa}
+  .row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+  button{appearance:none;border:0;border-radius:9px;background:var(--blue2);color:#fff;
+    font-size:15px;padding:11px 16px;min-height:44px;cursor:pointer}
+  button.ghost{background:#fff;color:var(--blue2);border:1px solid var(--blue2)}
+  button.danger{background:#fff;color:#a33;border:1px solid #d9a3a3;padding:7px 10px;min-height:36px;font-size:13px}
+  button:active{transform:translateY(1px)}
+  input[type=file]{font-size:14px;max-width:100%}
+  .doclist{list-style:none;margin:10px 0 0;padding:0}
+  .doclist li{display:flex;justify-content:space-between;align-items:center;gap:8px;
+    padding:8px 0;border-top:1px solid var(--line)}
+  .tag{display:inline-block;background:var(--chip);border-radius:6px;padding:1px 7px;
+    font-size:12px;font-weight:600;color:var(--blue);margin-right:6px;white-space:nowrap}
+  table{width:100%;border-collapse:collapse;font-size:14px}
+  th,td{padding:6px 6px;border-bottom:1px solid var(--line);text-align:right;vertical-align:top}
+  th:first-child,td:first-child{text-align:left}
+  th{color:var(--mut);font-weight:600;font-size:12.5px;text-transform:uppercase;letter-spacing:.03em}
+  tr.total td{font-weight:700;border-top:2px solid var(--ink);border-bottom:0}
+  tr.subtotal td{font-weight:600;background:#fafcfe}
+  .chk{border-radius:10px;padding:9px 11px;margin:7px 0;font-size:14px}
+  .chk .t{font-weight:650}
+  .chk p{margin:3px 0 0}
+  .chk.pass{background:var(--okbg);border:1px solid #bfe3cf}
+  .chk.warn{background:var(--warnbg);border:1px solid #ecd9a0}
+  .chk.info{background:var(--infobg);border:1px solid #c3d6e4}
+  .chk.skip{background:#f2f4f6;border:1px solid var(--line);color:var(--mut)}
+  .ico{font-weight:700;margin-right:5px}
+  .pass .ico{color:var(--ok)} .warn .ico{color:var(--warn)} .info .ico{color:var(--info)}
+  blockquote.remarks{margin:8px 0;padding:10px 12px;background:#fff8e1;border-left:4px solid #d9a400;
+    font-size:14px;white-space:pre-wrap;border-radius:0 8px 8px 0}
+  details{margin:8px 0}
+  summary{cursor:pointer;font-weight:600;font-size:14.5px;padding:6px 0;min-height:32px}
+  .rot{border:1px solid var(--line);border-radius:10px;padding:10px 12px;margin:8px 0}
+  .rot h4{margin:0 0 4px;font-size:15px}
+  .kv{display:flex;flex-wrap:wrap;gap:4px 14px;font-size:13.5px;color:var(--ink)}
+  .kv b{font-weight:650}
+  .empty{color:var(--mut);font-size:14px;padding:6px 0}
+  footer{max-width:860px;margin:0 auto;padding:0 12px 30px;color:var(--mut);font-size:12.5px}
+  @media (max-width:480px){ th,td{padding:6px 4px;font-size:13.5px} header h1{font-size:20px} }
+</style>
+</head>
+<body>
+<header>
+  <h1>Delta Pay Audit</h1>
+  <p>Personal, local-first pay reconciliation. Everything is computed in this browser — documents never leave your device and are stored only in this browser's local storage.</p>
+</header>
+<main>
+  <section class="card" id="addCard">
+    <h2>Add a document</h2>
+    <p class="mut">Paste raw text (or drop / pick a file) for any of: iCrew <b>time card</b>, <b>PAS</b> (CSV export), iCrew <b>pay statement</b>, <b>pay stub</b>, or iCrew <b>rotation</b> display. Type is auto-detected. Load as many periods as you like — reconciliation deepens with each document type present.</p>
+    <textarea id="pasteBox" placeholder="Paste document text here…"></textarea>
+    <div class="row" style="margin-top:10px">
+      <button id="addBtn" type="button">Add document</button>
+      <input type="file" id="fileInput" multiple accept=".txt,.csv,.text">
+    </div>
+    <div class="drop" id="dropZone">…or drop files anywhere on this card</div>
+    <p class="mut" id="addMsg" role="status"></p>
+    <ul class="doclist" id="docList"></ul>
+    <div class="row" style="margin-top:10px">
+      <button class="ghost" id="clearBtn" type="button">Remove all documents</button>
+    </div>
+  </section>
+
+  <div id="periods"></div>
+
+  <section class="card" id="historyCard" hidden>
+    <h2>History — all loaded periods</h2>
+    <div id="historyBody"></div>
+  </section>
+</main>
+<footer>
+  Rules implemented from the PWA / Scheduling Reference Handbook as reverse-engineered and verified against real documents (see project brief): PWA 3.G.1 advance = &frac12; &times; reserve guarantee (ALV &minus; 2, floor 72 / cap 80) &times; base rate; reroute postings per SRH (L.4 inside the rotation / ASTERISK PAY aggregate; L.8 via ADJ-RRPY). Lines whose composition cannot be determined from the documents are flagged, never guessed. This tool finds leads to verify — it is not a grievance filing.
+</footer>
+<script src="app.js"></script>
+</body>
+</html>
